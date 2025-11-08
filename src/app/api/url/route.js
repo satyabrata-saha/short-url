@@ -7,30 +7,46 @@ export async function GET() {
 
   const response = await sql`SELECT * FROM short_url ORDER BY id DESC`;
 
-  return NextResponse.json({
-    status: 200,
-    message: "Data Fetched Successfully",
-    data: response,
-  });
+  if (response.length > 1000) {
+    await sql`TRUNCATE TABLE short_url`;
+    return NextResponse.json({
+      status: 200,
+      message:
+        "Data Exceeded The Limit of 1000 Short URL, Data Deleted Successfully",
+      data: response,
+    });
+  } else {
+    return NextResponse.json({
+      status: 200,
+      message: "Data Fetched Successfully",
+      data: response,
+    });
+  }
 }
 
 export async function POST(request = NextRequest) {
   const searchData = await request.json();
-  const url = searchData.url;
-  const randomString = nanoid(6);
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const originalurl = searchData.originalurl;
+  const shorturl = searchData.shorturl || nanoid(6);
   const sql = neon(process.env.DATABASE_URL);
+
+  if (!originalurl) {
+    return NextResponse.json({
+      status: 400,
+      message: "Original URL is required",
+    });
+  }
 
   try {
     const createDataInDatabase =
-      await sql`INSERT INTO short_url (originalURL, shortURL) VALUES (${url}, ${randomString}) RETURNING *`;
+      await sql`INSERT INTO short_url (originalURL, shortURL) VALUES (${originalurl}, ${shorturl}) RETURNING *`;
 
     const data = {
       id: createDataInDatabase[0].id,
-      shorturl: baseUrl + createDataInDatabase[0].shorturl,
+      shorturl: createDataInDatabase[0].shorturl,
       originalurl: createDataInDatabase[0].originalurl,
     };
-    console.log(data);
+    // console.log(data);
 
     return NextResponse.json({
       status: 200,
@@ -40,7 +56,7 @@ export async function POST(request = NextRequest) {
   } catch (error) {
     return NextResponse.json({
       status: 500,
-      message: "Something went wrong while fetching data",
+      message: "short term already exists try different one",
       error: error.message,
     });
   }
