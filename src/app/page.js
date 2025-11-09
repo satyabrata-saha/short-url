@@ -7,18 +7,15 @@ import { SiShortcut } from "react-icons/si";
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const [originalURL, setOriginalURL] = useState("");
-  const [shortURLInput, setShortURLInput] = useState("");
   const [isCopied, setIsCopied] = useState(false);
   const [urlData, setUrlData] = useState([]);
   const [currUrlData, setCurrUrlData] = useState({});
   const [errorMessage, setErrorMessage] = useState("");
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  const maxUrl = process.env.NEXT_PUBLIC_MAX_URL;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setOriginalURL(event.target.url.value);
-    setShortURLInput(event.target.shorturl.value);
 
     try {
       const response = await fetch("/api/url/", {
@@ -27,8 +24,8 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          originalurl: event.target.url.value,
-          shorturl: event.target.shorturl.value,
+          originalurl: toString(event.target.originalurl.value),
+          shorturl: toString(event.target.shorturl.value),
         }),
       });
 
@@ -38,7 +35,7 @@ export default function Home() {
         return;
       }
       setCurrUrlData(data.data);
-      console.log(data.data);
+      // console.log(data.data);
     } catch (error) {
       console.error("Error submitting URL:", error);
     }
@@ -49,13 +46,9 @@ export default function Home() {
       .writeText(urlToCopy)
       .then(() => {
         setIsCopied(true);
-
         setTimeout(() => {
           setIsCopied(false);
-        }, 1000);
-
-        //reload page
-        window.location.reload();
+        }, 1500);
       })
       .catch((err) => console.error("Failed to copy text: ", err));
   };
@@ -71,13 +64,14 @@ export default function Home() {
         });
         const data = await response.json();
         setUrlData([data.data]);
-        console.log([data.data]);
       } catch (error) {
         console.error("Error submitting URL:", error);
       }
     };
     firstRequest();
   }, []);
+  // console.log(urlData);
+  // console.log(currUrlData);
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-zinc-100 dark:bg-slate-900">
@@ -90,9 +84,8 @@ export default function Home() {
                 A Public URL Shortener
               </h2>
               <p className="text-sm text-gray-500 dark:text-slate-400 text-center text-wrap">
-                After 1000 short url the website will reset and all the data
-                will be deleted and you will have to start again from the
-                beginning
+                After {maxUrl} short url the website will reset and all the data
+                will be deleted and then ready to create new short urls
               </p>
             </div>
 
@@ -159,12 +152,14 @@ export default function Home() {
                     <Link
                       href={baseUrl + currUrlData.shorturl}
                       className="text-sm hover:text-blue-500"
+                      target="_blank"
                     >
                       {baseUrl + currUrlData.shorturl}
                     </Link>
                     <button
                       onClick={() => (
-                        handleCopy(baseUrl + shortURLInput), setIsCopied(true)
+                        handleCopy(baseUrl + currUrlData.shorturl),
+                        setIsCopied(true)
                       )}
                       className="cursor-pointer font-semibold text-blue-400 hover:text-blue-300"
                     >
@@ -183,6 +178,7 @@ export default function Home() {
                   <Link
                     href={currUrlData.originalurl}
                     className="text-sm hover:text-blue-500"
+                    target="_blank"
                   >
                     {currUrlData.originalurl}
                   </Link>
@@ -196,19 +192,17 @@ export default function Home() {
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
             <div className="flex flex-row gap-4 p-2 justify-between">
               <div className="flex flex-row gap-2">
-                <p className="text-sm text-gray-900 dark:text-white">
-                  Used URL :
-                </p>
+                <p className="text-sm text-gray-900 dark:text-white">Used :</p>
                 <p className="text-sm text-gray-500 dark:text-slate-400">
-                  {urlData[0]?.length}
+                  {Number(urlData[0]?.length)}
                 </p>
               </div>
               <div className="flex flex-row gap-2">
                 <p className="text-sm text-gray-900 dark:text-white">
-                  Available URL :
+                  Available :
                 </p>
                 <p className="text-sm text-gray-500 dark:text-slate-400">
-                  {1000 - urlData[0]?.length}
+                  {Number(maxUrl) - Number(urlData[0]?.length)}
                 </p>
               </div>
             </div>
@@ -246,6 +240,7 @@ export default function Home() {
                         <Link
                           href={data.originalurl}
                           className="hover:text-blue-500"
+                          target="_blank"
                         >
                           <div
                             className="max-w-xs truncate"
@@ -259,6 +254,7 @@ export default function Home() {
                         <Link
                           href={baseUrl + data.shorturl}
                           className="hover:text-blue-500"
+                          target="_blank"
                         >
                           <div
                             title={baseUrl + data.shorturl}
@@ -270,7 +266,7 @@ export default function Home() {
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                         <span className="inline-block rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                          {data.visits}
+                          {data.visits || 0}
                         </span>
                       </td>
                     </tr>

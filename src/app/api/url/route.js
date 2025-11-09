@@ -1,18 +1,34 @@
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { neon } from "@neondatabase/serverless";
+import { constData } from "@/utils/constant";
 
 export async function GET() {
   const sql = neon(process.env.DATABASE_URL);
 
   const response = await sql`SELECT * FROM short_url ORDER BY id DESC`;
 
-  if (response.length > 1000) {
+  if (response.length === 0) {
+    const createMyDataInDatabase =
+      await sql`INSERT INTO short_url (originalURL, shortURL) VALUES 
+      (${constData[0].originalurl}, ${constData[0].shorturl}), 
+      (${constData[1].originalurl}, ${constData[1].shorturl}),
+      (${constData[2].originalurl}, ${constData[2].shorturl}),
+      (${constData[3].originalurl}, ${constData[3].shorturl}),
+      (${constData[4].originalurl}, ${constData[4].shorturl})
+      RETURNING *`;
+    return NextResponse.json({
+      status: 200,
+      message: `Data Fetched Successfully`,
+      data: createMyDataInDatabase,
+    });
+  }
+
+  if (response.length > process.env.NEXT_PUBLIC_MAX_URL) {
     await sql`TRUNCATE TABLE short_url`;
     return NextResponse.json({
       status: 200,
-      message:
-        "Data Exceeded The Limit of 1000 Short URL, Data Deleted Successfully",
+      message: `Data Exceeded The Limit of ${NEXT_PUBLIC_MAX_URL} Short URL, Data Deleted Successfully`,
       data: response,
     });
   } else {
